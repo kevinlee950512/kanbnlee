@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이강병 | API 연동 실습</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EDF0F4;
+    --sheet: #F8F9FB;
+    --ink: #1B2440;
+    --ink-soft: #56607A;
+    --line: #C9D0DC;
+    --cobalt: #2F4BA0;
+    --seal: #B8322A;
+    --ok: #2E7D4F;
+    --code-bg: #E3E8F0;
+    --serif: "Gowun Batang", "Nanum Myeongjo", "AppleMyungjo", serif;
+    --sans: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #121726;
+      --sheet: #182033;
+      --ink: #E4E8F2;
+      --ink-soft: #9AA3B8;
+      --line: #2E3850;
+      --cobalt: #8FA6EA;
+      --seal: #E0655C;
+      --ok: #6FCF97;
+      --code-bg: #10162A;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.7;
+    word-break: keep-all;
+  }
+  .wrap { max-width: 44rem; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; }
+
+  nav { margin-bottom: 2.5rem; }
+  nav a { color: var(--cobalt); font-weight: 600; text-decoration: none; }
+  nav a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  h1 { font-family: var(--serif); font-size: 2.1rem; line-height: 1.3; }
+  .intro { color: var(--ink-soft); margin-top: 0.6rem; }
+
+  .server {
+    margin-top: 1.5rem;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem;
+    font-size: 0.9rem; color: var(--ink-soft);
+  }
+  .server code { font-family: var(--mono); color: var(--ink); overflow-wrap: anywhere; }
+  .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.ok { background: var(--ok); }
+  .dot.fail { background: var(--seal); }
+
+  .panel {
+    background: var(--sheet);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1.75rem;
+    margin-top: 1.5rem;
+  }
+  .panel h2 { font-family: var(--serif); font-size: 1.2rem; }
+  .endpoint { font-family: var(--mono); font-size: 0.85rem; color: var(--cobalt); }
+  .panel p.desc { color: var(--ink-soft); font-size: 0.95rem; margin: 0.35rem 0 1rem; }
+
+  .row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  input {
+    flex: 1 1 12rem;
+    font: inherit;
+    padding: 0.65rem 0.85rem;
+    border: 1.5px solid var(--line);
+    border-radius: 2px;
+    background: var(--paper);
+    color: var(--ink);
+  }
+  button {
+    font: inherit; font-weight: 600;
+    padding: 0.65rem 1.2rem;
+    border: 1.5px solid var(--cobalt);
+    border-radius: 2px;
+    background: var(--cobalt);
+    color: var(--sheet);
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.55; cursor: wait; }
+  input:focus-visible, button:focus-visible, a:focus-visible {
+    outline: 3px solid var(--seal); outline-offset: 2px;
+  }
+
+  .message {
+    font-family: var(--serif);
+    font-size: 1.25rem;
+    margin-top: 1rem;
+    min-height: 1.7em;
+  }
+  .status { font-size: 0.9rem; color: var(--ink-soft); margin-top: 0.75rem; min-height: 1.5em; }
+  .status.error { color: var(--seal); }
+
+  pre {
+    margin-top: 0.75rem;
+    background: var(--code-bg);
+    padding: 1rem;
+    border-radius: 2px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  pre:empty { display: none; }
+
+  footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--ink-soft); }
+  footer a { color: var(--cobalt); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <nav><a href="index.html">← 이강병 소개 페이지로 돌아가기</a></nav>
+
+    <h1>API 연동 실습</h1>
+    <p class="intro">이 페이지(Vercel)에서 Render에 배포한 FastAPI 서버를 호출하고, 받아온 결과를 보여 줍니다.</p>
+
+    <div class="server">
+      <span class="dot" id="dot"></span>
+      <span id="serverText">서버 상태 확인 중…</span>
+      <code id="baseText"></code>
+    </div>
+
+    <div class="panel">
+      <h2>인사말 받기</h2>
+      <div class="endpoint">GET /api/hello?name=…</div>
+      <p class="desc">이름을 입력하면 서버가 인사말을 만들어 돌려줍니다.</p>
+      <div class="row">
+        <input id="nameInput" type="text" placeholder="이름을 입력하세요" value="이강병" aria-label="이름">
+        <button id="helloBtn" type="button">인사말 받기</button>
+      </div>
+      <div class="message" id="helloMsg" aria-live="polite"></div>
+      <div class="status" id="helloStatus"></div>
+    </div>
+
+    <div class="panel">
+      <h2>프로필 불러오기</h2>
+      <div class="endpoint">GET /api/profile</div>
+      <p class="desc">서버에 저장된 이강병의 소개 정보를 JSON으로 받아옵니다.</p>
+      <button id="profileBtn" type="button">프로필 불러오기</button>
+      <div class="status" id="profileStatus"></div>
+      <pre id="profileOut"></pre>
+    </div>
+
+    <footer>
+      API 문서와 직접 테스트는 <a id="docsLink" href="#" target="_blank" rel="noopener">Swagger UI</a>에서 할 수 있습니다.
+    </footer>
+  </div>
+
+<script>
+  // ✏️ Render에 배포한 백엔드 주소로 바꿔 주세요 (끝에 / 없이)
+  const API_BASE = "https://your-backend.onrender.com";
+
+  const $ = (id) => document.getElementById(id);
+  $("baseText").textContent = API_BASE;
+  $("docsLink").href = API_BASE + "/docs";
+
+  // Render 무료 플랜은 잠들어 있다가 깨어나는 데 시간이 걸리므로 넉넉히 기다린다
+  async function callApi(path, statusEl) {
+    const slowTimer = setTimeout(() => {
+      statusEl.textContent = "서버를 깨우는 중입니다. 첫 요청은 최대 1분 정도 걸릴 수 있어요…";
+    }, 3000);
+    statusEl.className = "status";
+    statusEl.textContent = "요청 중…";
+    const started = performance.now();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90000);
+      const res = await fetch(API_BASE + path, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error("서버가 " + res.status + " 오류를 돌려줬습니다.");
+      const data = await res.json();
+      const ms = Math.round(performance.now() - started);
+      statusEl.textContent = "응답 완료 (" + ms + "ms)";
+      return data;
+    } catch (err) {
+      statusEl.className = "status error";
+      statusEl.textContent = err.name === "AbortError"
+        ? "응답이 90초 넘게 없습니다. 잠시 후 다시 시도해 주세요."
+        : "호출에 실패했습니다: " + err.message + " API_BASE 주소와 서버의 CORS 설정을 확인해 주세요.";
+      return null;
+    } finally {
+      clearTimeout(slowTimer);
+    }
+  }
+
+  // 서버 상태 확인
+  (async () => {
+    // 상태 문구를 상단 서버 표시줄에 바로 보여 주기 위한 대체 객체
+    const serverStatus = {
+      set className(v) {},
+      set textContent(v) { $("serverText").textContent = v; },
+    };
+    const data = await callApi("/api/health", serverStatus);
+    if (data) {
+      $("dot").className = "dot ok";
+      $("serverText").textContent = "서버 연결됨 (서버 시각 " + data.server_time + ")";
+    } else {
+      $("dot").className = "dot fail";
+      $("serverText").textContent = "서버에 연결하지 못했습니다";
+    }
+  })();
+
+  // 인사말
+  async function sayHello() {
+    const btn = $("helloBtn");
+    btn.disabled = true;
+    $("helloMsg").textContent = "";
+    const name = $("nameInput").value;
+    const data = await callApi("/api/hello?name=" + encodeURIComponent(name), $("helloStatus"));
+    if (data) $("helloMsg").textContent = data.message;
+    btn.disabled = false;
+  }
+  $("helloBtn").addEventListener("click", sayHello);
+  $("nameInput").addEventListener("keydown", (e) => { if (e.key === "Enter") sayHello(); });
+
+  // 프로필
+  $("profileBtn").addEventListener("click", async () => {
+    const btn = $("profileBtn");
+    btn.disabled = true;
+    $("profileOut").textContent = "";
+    const data = await callApi("/api/profile", $("profileStatus"));
+    if (data) $("profileOut").textContent = JSON.stringify(data, null, 2);
+    btn.disabled = false;
+  });
+</script>
+</body>
+</html>
